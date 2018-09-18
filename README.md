@@ -35,3 +35,38 @@ model {
   }
 }
 ```
+
+## Explanations
+The pipeline_config_file looks like this:
+```
+model {
+  faster_rcnn {
+    num_classes: 2
+    image_resizer {
+      keep_aspect_ratio_resizer {
+        min_dimension: 600
+        max_dimension: 1024
+      }
+    }
+  }
+}
+```
+But Python doesn't accept this syntax for a dictionary. It must look like this:
+```
+{
+  "model": {
+    "faster_rcnn": {
+      "num_classes": 2,
+      "image_resizer": {
+        "keep_aspect_ratio_resizer": {
+          "min_dimension": 600,
+          "max_dimension": 1024
+        }
+      }
+    }
+  }
+}
+```
+With my code, I add the missing " and : and ,
+
+For converting in the other direction the " and : and , must be removed at specific places.
