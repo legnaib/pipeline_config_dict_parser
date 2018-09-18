@@ -120,4 +120,3 @@ def dict_to_config(config_dict, new_pipeline_path):
     with tf.gfile.Open(new_pipeline_path, "wb") as f:
         f.write(dict_str)
     return dict_str
-    #config_start_str = str(config_dict)[1:-1]
