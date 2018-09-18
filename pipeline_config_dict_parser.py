@@ -1,5 +1,6 @@
 import re
 from object_detection.utils import config_util
+import tensorflow as tf
 
 def isfloat(value):
     try:
@@ -66,22 +67,47 @@ def config_to_dict(pipeline_config_path):
     return config_dict
 
 def recursive_dict_to_str(sub_dict, depth=0):
+    """Convert dictionary recursively to a string, so that it is pretty, when you write it to a file.
+
+    Args:
+      sub_dict: Sub dictionary which should be converted to a string
+      depth: Depth of the actual dictionary in the initial dictionary
+
+    Returns:
+      dict_str: Dictionary string formatted for looking good in a config file"""
+
+    # if there is no dict just return the value
     if type(sub_dict) != dict:
         return str(sub_dict)
     keys = list(sub_dict.keys())
-    dict_str = ' '*2*depth
+    dict_str = ''
     for key in keys:
+        # Starting the sub_dict with enough indent
+        dict_str += ' '*2*depth
+
+        # if there is no sub_dict in sub_dict[key], just add the key-value-pair pretty
         if isfloat(sub_dict[key]):
             dict_str += key + ': ' + str(sub_dict[key]) + '\n'
         elif type(sub_dict[key]) == str:
             dict_str += key + ': "' + sub_dict[key] + '"\n'
+
+        # otherwise add recursively the pretty string from the sub_dict[key]-sub_dict
         else:
             dict_str += key + ' {\n'
             dict_str += recursive_dict_to_str(sub_dict[key], depth+1)
-            dict_str += '}\n'
+            dict_str += ' '*2*depth + '}\n'
     return dict_str
 
 def dict_to_config(config_dict, new_pipeline_path):
+    """Convert dictionary to a string and write the result readable (and pretty) to a pipeline_config_file.
+
+    Args:
+      config_dict: Dictionary which should be written to the config file
+      new_pipeline_path: Path of the new pipeline_config_file where the dict will be written to
+
+    Returns:
+      Nothing"""
+
     dict_str = recursive_dict_to_str(config_dict)
     with tf.gfile.Open(new_pipeline_path, "wb") as f:
         f.write(dict_str)
