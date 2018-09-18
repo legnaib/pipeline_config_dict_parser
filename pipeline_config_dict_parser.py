@@ -3,6 +3,14 @@ from object_detection.utils import config_util
 import tensorflow as tf
 
 def isfloat(value):
+    """Returns if a given value can be converted to a float or not.
+
+    Args:
+      value: Input value of each type
+
+    Returns:
+      bool: Boolean if the input value can be parsed to a float"""
+      
     try:
         float(value)
         return True
