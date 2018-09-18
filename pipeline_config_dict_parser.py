@@ -10,7 +10,7 @@ def isfloat(value):
 
     Returns:
       bool: Boolean if the input value can be parsed to a float"""
-      
+
     try:
         float(value)
         return True
@@ -114,9 +114,10 @@ def dict_to_config(config_dict, new_pipeline_path):
       new_pipeline_path: Path of the new pipeline_config_file where the dict will be written to
 
     Returns:
-      Nothing"""
+      dict_str: The string which is written to the pipeline_config_file"""
 
     dict_str = recursive_dict_to_str(config_dict)
     with tf.gfile.Open(new_pipeline_path, "wb") as f:
         f.write(dict_str)
+    return dict_str
     #config_start_str = str(config_dict)[1:-1]
