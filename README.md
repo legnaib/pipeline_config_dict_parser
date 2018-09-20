@@ -146,9 +146,3 @@ Therefore I added a lot of variables and if-elif-else-clauses for handling these
   for each depth, save the last attribute and its position in the whole string to compare with the current one and see if they're the same and a list must be created
 * `opened_list`: _dict of bools_  
   for each depth, save if you have just opened a list, so don't forget to close it when you go up in depth
-  
-[comment]: <> (| name | type | usage |)
-[comment]: <> (| --- | --- | --- |)
-[comment]: <> (| `start_subdict` | bool | signalize if the next elem will be a sub_dict (so { occurs ] or it will just be a value (int, float or str] |)
-[comment]: <> (| `last_attr` | dict of pairs | for each depth, save the last attribute and its position in the whole string to compare with the current one and see if they're the same and a list must be created |)
-[comment]: <> (| `opened_list` | dict of bools | for each depth, save if you have just opened a list, so don't forget to close it when you go up in depth |)

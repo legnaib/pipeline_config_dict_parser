@@ -1,6 +1,7 @@
 import re
 from object_detection.utils import config_util
 import tensorflow as tf
+from functools import reduce
 
 def isfloat(value):
     """Returns if a given value can be converted to a float or not.
@@ -26,16 +27,22 @@ def config_to_dict(pipeline_config_path):
     Returns:
       config_dict: Dictionary for the pipeline_config_file to access with subscripts like config_dict['train_config']"""
 
-    # Create an object_detection.proto.pipeline_pb2.TrainEvalPipelineConfig object
-    pipeline_config = config_util.get_configs_from_pipeline_file(pipeline_config_path)
-    config = config_util.create_pipeline_proto_from_configs(pipeline_config)
+    f = open(pipeline_config_path, "r")
+    config_str = f.read()
 
     # Make some preprocessing to access and convert easier
-    config_str = str(config)
-    # Add a : when some sub_dict begins with
-    #config_str_better = config_str.replace('{', ':{')
-    all_elems = re.split('\s|\n', config_str)
-    all_real_elems = list(filter(lambda x: x != '' and x != '\n', all_elems))
+    all_elems = config_str.split('\n')
+
+    # delete all characters which are after # and in the same line (the comments are deleted)
+    all_elems_no_comments = [elem if '#' not in elem else elem[:elem.index('#')] for elem in all_elems]
+
+    # separate the elements by blanks
+    all_elems_no_blanks = re.split('\s|\t', str(reduce(lambda x, y: x+' '+y, all_elems_no_comments, '')))
+
+    # add the start and end {} for the whole dict
+    all_real_elems = ['{']
+    all_real_elems.extend(list(filter(lambda x: x != '' and x != '\n', all_elems_no_blanks)))
+    all_real_elems.append('}')
 
     # Information if you got a key, to know, that you need a comma after the next value
     # to separate it from other key-value pairs
@@ -50,7 +57,7 @@ def config_to_dict(pipeline_config_path):
     # to convert two or more same arguments into a list (otherwise not correctly parsed to dict)
     last_attr = dict()
     opened_list = dict()
-    dict_str = '{'
+    dict_str = ''
 
     # Each key and each values is saved in one listelement
     # There are a lot more elements filled with '', '{' or '}'
@@ -70,7 +77,11 @@ def config_to_dict(pipeline_config_path):
             # and another parent attribute, but my code thinks, that these two attributes
             # must be saved together in a list, even if they are in completely different contexts
             if depth in last_attr: del last_attr[depth]
-            if depth in opened_list: del opened_list[depth]
+            if depth in opened_list:
+                # maybe the list is opened, so it should be closed
+                if opened_list[depth]:
+                    dict_str += "],"
+                    del opened_list[depth]
             depth -= 1
             dict_str += elem + ','
 
@@ -89,7 +100,7 @@ def config_to_dict(pipeline_config_path):
             if elem[-1] != ':':
                 elem += ':'
                 start_subdict = True
-            print("elem:", elem, "depth:",depth, "last_attr:", last_attr, "\nopened_list:", opened_list)
+
             # test if the key value occurs not the first time
             if depth in last_attr and last_attr[depth][0] == elem[:-1]:
                 # if it the second time and the list is not started with [
@@ -117,18 +128,16 @@ def config_to_dict(pipeline_config_path):
                 dict_str += '"' + elem[:-1] + '":'
             start_attr = True
         else:
-            print("Other:", elem)
             dict_str += '"' + elem + '"'
 
         # adding the ',' if the key-value-pair is finished to set apart from other pairs
         if not start_subdict and start_attr and elem[-1] != ':':
             start_attr = False
             dict_str += ','
-    dict_str += '}'
 
     # after getting the dict in a correct string format, just convert it to a dict
     config_dict = eval(dict_str)
-    return config_dict
+    return config_dict[0]
 
 def recursive_dict_to_str(sub_dict, depth=0):
     """Convert dictionary recursively to a string, so that it is pretty, when you write it to a file.
