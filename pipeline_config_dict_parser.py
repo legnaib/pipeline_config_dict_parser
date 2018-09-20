@@ -32,21 +32,46 @@ def config_to_dict(pipeline_config_path):
 
     # Make some preprocessing to access and convert easier
     config_str = str(config)
-    config_str_better = config_str.replace('{', ':{')
-    all_elems = re.split('\s|\n', config_str_better)
+    # Add a : when some sub_dict begins with
+    #config_str_better = config_str.replace('{', ':{')
+    all_elems = re.split('\s|\n', config_str)
     all_real_elems = list(filter(lambda x: x != '' and x != '\n', all_elems))
+
+    # Information if you got a key, to know, that you need a comma after the next value
+    # to separate it from other key-value pairs
     start_attr = False
+
+    # Information if you have just a key-value pair or a key-subdict pair, so you don't
+    # need a , after the next elem (it will be a {)
+    start_subdict = False
+    depth = 0
+
+    # Save the last attribute and the position in the string
+    # to convert two or more same arguments into a list (otherwise not correctly parsed to dict)
+    last_attr = dict()
+    opened_list = dict()
     dict_str = '{'
 
     # Each key and each values is saved in one listelement
     # There are a lot more elements filled with '', '{' or '}'
     for elem in all_real_elems:
         # ignore the elems without keys/values or which are quoted
-        if '"' in elem or '{' in elem or \
-            elem == '' or \
-            isfloat(elem):
+        if '"' in elem or elem == '' or isfloat(elem):
+            dict_str += elem
+        elif '{' in elem:
+            # going one step deeper
+            depth += 1
+            start_subdict = False
+            start_attr = False
             dict_str += elem
         elif '}' in elem:
+            # going one step up, so it's not important any more which key was the last
+            # at the previous depth. Otherwise the key can occur later in another context
+            # and another parent attribute, but my code thinks, that these two attributes
+            # must be saved together in a list, even if they are in completely different contexts
+            if depth in last_attr: del last_attr[depth]
+            if depth in opened_list: del opened_list[depth]
+            depth -= 1
             dict_str += elem + ','
 
         # adjust false and true correctly to Python syntax
@@ -58,14 +83,45 @@ def config_to_dict(pipeline_config_path):
         # if there is a ':' in the element, this is a key
         # making start_attr = True so you know, that the next elem will be the value
         # and after the value you must add the delimiter ',' to get a correct dict
-        elif elem[-1] == ':':
+
+        # Some key arguments does not have a ':' inside, but the { is in the next elem
+        elif elem[-1] == ':' or '{' in all_real_elems[all_real_elems.index(elem)+1]:
+            if elem[-1] != ':':
+                elem += ':'
+                start_subdict = True
+            print("elem:", elem, "depth:",depth, "last_attr:", last_attr, "\nopened_list:", opened_list)
+            # test if the key value occurs not the first time
+            if depth in last_attr and last_attr[depth][0] == elem[:-1]:
+                # if it the second time and the list is not started with [
+                if depth not in opened_list or not opened_list[depth]:
+                    # go back into the string and add some [, for signalizing the list started
+                    rest_dict = dict_str[last_attr[depth][1]:]
+                    rest_dict_key = rest_dict.split(':')[0]
+                    rest_values = rest_dict[len(rest_dict_key)+1:]
+                    dict_str = dict_str[:last_attr[depth][1]]
+                    dict_str += '"' + elem[:-1] + '":[' + rest_values
+
+                    # safe the information that you opened a list
+                    opened_list[depth] = True
+                else:
+                    # otherwise the key occured a third time (or more often)
+                    # so there is no need to add the key, only the value should be added to the list
+                    pass
+            else:
+                # if a list is opened and you have no other attribute to add to this list
+                if depth in opened_list and opened_list[depth]:
+                    # just close the list
+                    dict_str += "],"
+                    opened_list[depth] = False
+                last_attr[depth] = (elem[:-1], len(dict_str))
+                dict_str += '"' + elem[:-1] + '":'
             start_attr = True
-            dict_str += '"' + elem[:-1] + '":'
         else:
+            print("Other:", elem)
             dict_str += '"' + elem + '"'
 
         # adding the ',' if the key-value-pair is finished to set apart from other pairs
-        if start_attr and elem[-1] != ':':
+        if not start_subdict and start_attr and elem[-1] != ':':
             start_attr = False
             dict_str += ','
     dict_str += '}'
